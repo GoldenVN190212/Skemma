@@ -1,0 +1,135 @@
+/* ========== RESET CSS ========== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Poppins", sans-serif;
+}
+
+/* ========== BODY ====== */
+body {
+  background: linear-gradient(135deg, #12002f, #2d006e, #5500aa, #8c3bff);
+  color: #fff;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ========== AUTH CONTAINER ====== */
+.auth-container {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 40px;
+  border-radius: 25px;
+  width: 380px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0 25px rgba(0, 255, 255, 0.2);
+  animation: fadeIn 0.6s ease;
+}
+
+/* ========== TITLE ====== */
+.auth-container h2 {
+  text-align: center;
+  font-size: 28px;
+  margin-bottom: 30px;
+  color: #ffdd00;
+  text-shadow: 0 0 10px #ffdd00;
+}
+
+/* ========== INPUT FIELDS ====== */
+.auth-container input {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0 18px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  outline: none;
+  font-size: 15px;
+  transition: 0.3s;
+}
+
+.auth-container input::placeholder {
+  color: #ccc;
+}
+
+.auth-container input:focus {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 8px #ffdd00;
+}
+
+/* ========== BUTTON ====== */
+.auth-container button {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #ff6a00, #ffcc00);
+  color: #fff;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.auth-container button:hover {
+  filter: brightness(1.15);
+  transform: translateY(-2px);
+  box-shadow: 0 0 15px rgba(255, 204, 0, 0.6);
+}
+
+/* ========== LINK ====== */
+.auth-link {
+  text-align: center;
+  margin-top: 18px;
+  font-size: 14px;
+  color: #eee;
+}
+
+.auth-link a {
+  color: #ffdd00;
+  text-decoration: none;
+  font-weight: 500;
+  transition: 0.3s;
+}
+
+.auth-link a:hover {
+  color: #ff6a00;
+  text-decoration: underline;
+}
+
+/* ========== SOCIAL BUTTONS ====== */
+#googleLogin, #facebookLogin {
+  margin-top: 15px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+  color: #fff;
+}
+
+#googleLogin {
+  background: linear-gradient(90deg, #4285f4, #34a853);
+}
+
+#googleLogin:hover {
+  filter: brightness(1.15);
+}
+
+#facebookLogin {
+  background: linear-gradient(90deg, #1877f2, #3b5998);
+}
+
+#facebookLogin:hover {
+  filter: brightness(1.15);
+}
+
+/* ========== ANIMATION ====== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
