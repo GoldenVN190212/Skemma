@@ -1,0 +1,17 @@
+{
+  "name": "skemma-chat-node-server",
+  "version": "1.0.0",
+  "description": "Node.js Socket.IO server for Skemma Chat",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}

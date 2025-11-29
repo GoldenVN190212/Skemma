@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skemma Chat</title>
+    <link rel="stylesheet" href="./Css/Chat.css">
+</head>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+<body>
+    <nav class="navbar">
+        <div class="logo">Skemi</div>
+        <ul class="nav-links"></ul>
+    </nav>
+
+    <div class="chat-wrapper">
+
+        <div class="friends-sidebar" id="friendsSidebar">
+            <h3>👥 Friends</h3>
+            <ul id="friendsList"></ul>
+
+            <div class="friend-search">
+                <input id="friendSearchInput" placeholder="Search by username or email..." />
+                <button id="addFriendBtn">Add Friend</button>
+                <ul id="searchResults"></ul>
+            </div>
+        </div>
+
+        <div class="chat-container">
+            <div class="chat-header" id="chatHeader">
+                <span id="friendNameDisplay">Select a friend to chat</span>
+                <div id="callButtons" style="display:inline-block; margin-left: 10px;">
+                    <button id="voiceCallBtn" title="Gọi Thoại" disabled>📞</button>
+                    <button id="videoCallBtn" title="Gọi Video" disabled>📹</button>
+                </div>
+            </div>
+
+            <div id="messages"></div>
+
+            <div id="typingIndicator" class="typing-indicator"></div>
+
+            <div class="input-area" id="chatInputArea">
+                <div id="replyPreview" style="display:none;">
+                    <span id="replyText"></span>
+                    <button id="cancelReplyBtn">✖</button>
+                </div>
+                <button id="emojiBtn">😊</button>
+                <button id="attachBtn">📎</button>
+                <input id="fileInput" type="file" accept="image/*,video/*" style="display:none">
+
+                <input id="msg" placeholder="Type a message..." autocomplete="off" />
+                <button id="sendBtn">Send</button>
+                <!-- Đảm bảo có div này trong vùng hiển thị chat -->
+                <div id="chatNotification" class="w-full"></div>
+
+                <!-- ... và vùng chứa tin nhắn ... -->
+                <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-2">
+                    <!-- Tin nhắn sẽ hiển thị ở đây -->
+                </div>
+            </div>
+            <div class="call-area" id="callArea"
+                style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10001; flex-direction: column; justify-content: center; align-items: center;">
+                <div id="videoContainer"
+                    style="position: relative; width: 80%; max-width: 900px; height: 70%; max-height: 600px; background: #000; margin-bottom: 20px;">
+                    <video id="remoteVideo" autoplay playsinline
+                        style="width: 100%; height: 100%; object-fit: contain;"></video>
+                    <video id="localVideo" muted autoplay playsinline
+                        style="position: absolute; bottom: 10px; right: 10px; width: 150px; height: 100px; background: gray; border: 2px solid white; object-fit: cover;"></video>
+                </div>
+                <div id="callStatus" style="color: white; font-size: 1.2em; margin-bottom: 15px;">Đang chờ phản hồi...
+                </div>
+                <div id="callControls">
+                    <button id="answerCallBtn"
+                        style="display:none; padding: 10px 20px; background: green; color: white; border: none; border-radius: 5px; margin: 0 10px;">Trả
+                        lời</button>
+                    <button id="rejectCallBtn"
+                        style="display:none; padding: 10px 20px; background: red; color: white; border: none; border-radius: 5px; margin: 0 10px;">Từ
+                        chối</button>
+                    <button id="endCallBtn"
+                        style="display:none; padding: 10px 20px; background: red; color: white; border: none; border-radius: 5px; margin: 0 10px;">Kết
+                        thúc</button>
+                </div>
+            </div>
+
+            <button id="logoutBtn">🚪 Logout</button>
+        </div>
+
+    </div>
+
+    <script type="module" src="./Js/User_navbar.js" defer></script>
+    <script type="module" src="./Js/Friends.js" defer></script>
+    <script type="module" src="./Js/Chat.js" defer></script>
+
+</body>
+
+</html>
