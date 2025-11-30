@@ -1,122 +1,135 @@
+// TÊN FILE: server.js
+
 const express = require('express');
-const http = require('http');
+const https = require('https'); // ⬅️ THAY THẾ 'http' BẰNG 'https'
+const fs = require('fs');       // ⬅️ Thêm module File System để đọc chứng chỉ
 const { Server } = require('socket.io');
 
+// ====================================================================
+//                 CẤU HÌNH HTTPS (CHỨNG CHỈ TỰ KÝ)
+// ====================================================================
+
+// ✅ THAY THẾ BẰNG MẬT KHẨU THỰC TẾ BẠN ĐÃ DÙNG CHO key.pem!
+const MY_PASS_PHRASE = 'Mật khẩu bạn vừa tạo'; 
+
+const options = {
+    key: fs.readFileSync('key.pem'),
+    cert: fs.readFileSync('cert.pem'),
+    passphrase: MY_PASS_PHRASE 
+};
+
 const app = express();
-const server = http.createServer(app);
+const server = https.createServer(options, app); // ⬅️ Dùng HTTPS Server
 
 const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
 });
 
-// Lưu trữ các socket đang kết nối: {user_id: socket_sid}
+// ... (Giữ nguyên các biến và hàm Utils) ...
 const userSockets = {};
-// Lưu trữ tin nhắn (Demo, thay thế cho Database thật)
-const messageHistory = {}; // {convId: [msg1, msg2, ...]}
-
+const messageHistory = {}; 
 const PORT = 8000;
-
-// --- Utils ---
 function getConvId(uid1, uid2) {
-    return [uid1, uid2].sort().join("_");
+    return [uid1, uid2].sort().join("_");
 }
 
 // --- Socket.IO Events ---
 
 io.on('connection', (socket) => {
-    const userId = socket.handshake.auth.uid;
-    
-    if (!userId) {
-        console.error("[ERROR] Connection refused: Missing UID in auth payload");
-        socket.disconnect(true);
-        return;
-    }
+    const userId = socket.handshake.auth.uid;
+    // ... (Giữ nguyên toàn bộ logic kết nối, tin nhắn, WebRTC signaling,...) ...
+    
+    if (!userId) {
+        console.error("[ERROR] Connection refused: Missing UID in auth payload");
+        socket.disconnect(true);
+        return;
+    }
 
-    // 1. Xử lý kết nối và đăng ký Socket ID
-    if (userSockets[userId]) {
-        console.log(`[RECONNECT] Closing old socket for ${userId}: ${userSockets[userId]}`);
-        const oldSocket = io.sockets.sockets.get(userSockets[userId]);
-        if (oldSocket) {
-            oldSocket.disconnect(true);
-        }
-    }
-        
-    userSockets[userId] = socket.id;
-    console.log(`[CONNECT] User ${userId} connected with SID: ${socket.id}`);
+    // 1. Xử lý kết nối và đăng ký Socket ID
+    if (userSockets[userId]) {
+        console.log(`[RECONNECT] Closing old socket for ${userId}: ${userSockets[userId]}`);
+        const oldSocket = io.sockets.sockets.get(userSockets[userId]);
+        if (oldSocket) {
+            oldSocket.disconnect(true);
+        }
+    }
+        
+    userSockets[userId] = socket.id;
+    console.log(`[CONNECT] User ${userId} connected with SID: ${socket.id}`);
 
-    socket.emit('connected', { message: "Successfully connected to Node.js server" });
+    socket.emit('connected', { message: "Successfully connected to Node.js server" });
 
-    // 2. Xử lý ngắt kết nối
-    socket.on('disconnect', () => {
-        let userIdToRemove = null;
-        for (const [uid, sid] of Object.entries(userSockets)) {
-            if (sid === socket.id) {
-                userIdToRemove = uid;
-                break;
-            }
-        }
-        
-        if (userIdToRemove) {
-            delete userSockets[userIdToRemove];
-            console.log(`[DISCONNECT] User ${userIdToRemove} disconnected`);
-        }
-    });
+    // 2. Xử lý ngắt kết nối
+    socket.on('disconnect', () => {
+        let userIdToRemove = null;
+        for (const [uid, sid] of Object.entries(userSockets)) {
+            if (sid === socket.id) {
+                userIdToRemove = uid;
+                break;
+            }
+        }
+        
+        if (userIdToRemove) {
+            delete userSockets[userIdToRemove];
+            console.log(`[DISCONNECT] User ${userIdToRemove} disconnected`);
+        }
+    });
 
-    // 3. Xử lý tin nhắn đến ('send_message')
-    socket.on('send_message', (data) => {
-        const senderId = data.sender;
-        const receiverId = data.receiver;
-        
-        if (!senderId || !receiverId) return;
+    // 3. Xử lý tin nhắn đến ('send_message')
+    socket.on('send_message', (data) => {
+        const senderId = data.sender;
+        const receiverId = data.receiver;
+        
+        if (!senderId || !receiverId) return;
 
-        const messageData = {
-            key: Date.now().toString() + Math.random().toString(36).substring(2, 5),
-            timestamp: Date.now(),
-            seen: false,
-            ...data
-        };
-        
-        const convId = getConvId(senderId, receiverId);
-        
-        if (!messageHistory[convId]) {
-            messageHistory[convId] = [];
-        }
-        messageHistory[convId].push(messageData);
-        
-        socket.emit('receive_message', messageData); 
-        
-        const receiverSid = userSockets[receiverId];
-        if (receiverSid) {
-            io.to(receiverSid).emit('receive_message', messageData);
-        }
-        
-        console.log(`[MESSAGE] ${senderId} -> ${receiverId} in ${convId}`);
-    });
+        const messageData = {
+            key: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+            timestamp: Date.now(),
+            seen: false,
+            ...data
+        };
+        
+        const convId = getConvId(senderId, receiverId);
+        
+        if (!messageHistory[convId]) {
+            messageHistory[convId] = [];
+        }
+        messageHistory[convId].push(messageData);
+        
+        socket.emit('receive_message', messageData); 
+        
+        const receiverSid = userSockets[receiverId];
+        if (receiverSid) {
+            io.to(receiverSid).emit('receive_message', messageData);
+        }
+        
+        console.log(`[MESSAGE] ${senderId} -> ${receiverId} in ${convId}`);
+    });
 
-    // 4. Yêu cầu lịch sử tin nhắn
-    socket.on('request_history', (data) => {
-        const senderId = data.sender;
-        const receiverId = data.receiver;
-        const convId = getConvId(senderId, receiverId);
-        
-        const history = messageHistory[convId] || [];
-        
-        socket.emit('message_history', { convId, messages: history });
-        console.log(`[HISTORY] Sent ${history.length} messages to ${senderId} for ${convId}`);
-    });
+    // 4. Yêu cầu lịch sử tin nhắn
+    socket.on('request_history', (data) => {
+        const senderId = data.sender;
+        const receiverId = data.receiver;
+        const convId = getConvId(senderId, receiverId);
+        
+        const history = messageHistory[convId] || [];
+        
+        socket.emit('message_history', { convId, messages: history });
+        console.log(`[HISTORY] Sent ${history.length} messages to ${senderId} for ${convId}`);
+    });
 
-    // 5. Trạng thái gõ phím ('typing')
-    socket.on('typing', (data) => {
-        const receiverId = data.receiver;
-        const receiverSid = userSockets[receiverId];
-        
-        if (receiverSid) {
-            io.to(receiverSid).emit('typing', data);
-        }
-    });
+    // 5. Trạng thái gõ phím ('typing')
+    socket.on('typing', (data) => {
+        const receiverId = data.receiver;
+        const receiverSid = userSockets[receiverId];
+        
+        if (receiverSid) {
+            io.to(receiverSid).emit('typing', data);
+        }
+    });
     
     // 6. Xử lý yêu cầu gọi đi ('call_request')
     socket.on('call_request', (data) => {
@@ -126,13 +139,27 @@ io.on('connection', (socket) => {
         console.log(`[CALL] ${sender} is requesting a ${callType} call to ${receiver}`);
 
         if (receiverSid) {
+            // Người nhận đang online: Gửi incoming_call
             io.to(receiverSid).emit('incoming_call', {
                 sender: sender,
                 callType: callType,
                 senderName: data.senderName
             });
+            // Gửi ringing để client cập nhật UI chờ
+            socket.emit('ringing', { sender, receiver }); 
         } else {
-            socket.emit('call_failed', { reason: 'Người nhận không trực tuyến hoặc không kết nối Socket.IO.' });
+            // Người nhận offline: CHỜ 10 GIÂY TRƯỚC KHI BÁO LỖI
+            console.log(`[CALL] Receiver ${receiver} is not reachable. Waiting 10s before notifying sender.`);
+            
+            setTimeout(() => {
+                // SỬ DỤNG SỰ KIỆN 'not_reachable'
+                socket.emit('not_reachable', { 
+                    sender: sender,
+                    receiver: receiver,
+                    reason: 'Người nhận hiện không có mạng.' 
+                });
+                console.log(`[CALL] Sent 'not_reachable' to ${sender} after 10s delay.`);
+            }, 10000); 
         }
     });
 
@@ -193,5 +220,6 @@ io.on('connection', (socket) => {
 
 // Khởi chạy server Node.js
 server.listen(PORT, () => {
-  console.log(`Node.js Socket.IO Server running on http://localhost:${PORT}`);
+    // ⬅️ Cập nhật console log
+    console.log(`Node.js Socket.IO Server running on HTTPS: https://localhost:${PORT}`); 
 });

@@ -14,12 +14,11 @@ body {
 }
 
 /* ========== NAVBAR ====== */
-/* ========== NAVBAR ====== */
 .navbar {
     width: 100%;
     background: rgba(255, 255, 255, 0.05);
     display: flex;
-    justify-content: space-between; /* Đẩy logo và nút sang hai bên */
+    justify-content: space-between; 
     align-items: center;
     padding: 12px 40px;
     position: sticky;
@@ -31,12 +30,12 @@ body {
 
 /* Thêm style cho nút tên người dùng (vonhantriquan) */
 .user-info-btn {
-    background: #ff7b4d; /* Màu cam */
+    background: #ff7b4d; 
     color: #fff;
     font-weight: 600;
     padding: 8px 12px;
     border: none;
-    border-radius: 12px; /* Góc bo tròn */
+    border-radius: 12px; 
     cursor: pointer;
     transition: 0.3s;
 }
@@ -145,8 +144,8 @@ body {
 /* Tin nhắn - ĐÃ SỬA: Sắp xếp các phần tử con theo cột */
 .msg-box {
     display: flex;
-    flex-direction: column; /* Quan trọng: Đặt tin nhắn và trạng thái trên các dòng riêng biệt */
-    gap: 2px; /* Giảm khoảng cách giữa bong bóng và trạng thái */
+    flex-direction: column; 
+    gap: 2px; 
     max-width: 80%;
     animation: fadeIn 0.2s ease;
 }
@@ -194,10 +193,10 @@ body {
 
 /* Tin nhắn của mình - ĐÃ SỬA */
 .me-box {
-    align-self: flex-end; /* Căn toàn bộ msg-box sang phải */
+    align-self: flex-end; 
 }
 .me-box .msg-content-wrapper {
-    flex-direction: row-reverse; /* Đặt avatar sau bong bóng */
+    flex-direction: row-reverse; 
 }
 .me {
     background: #e0ffc4;
@@ -205,16 +204,16 @@ body {
     border-radius: 18px 18px 0 18px;
 }
 .me-box .status-message {
-    align-self: flex-end; /* Căn trạng thái sang phải */
-    margin-right: 44px; /* Giữ khoảng trống cho avatar */
+    align-self: flex-end; 
+    margin-right: 44px; 
 }
 
 /* Tin nhắn bạn bè - ĐÃ SỬA */
 .other-box {
-    align-self: flex-start; /* Căn toàn bộ msg-box sang trái */
+    align-self: flex-start; 
 }
 .other-box .msg-content-wrapper {
-    flex-direction: row; /* Đặt avatar trước bong bóng */
+    flex-direction: row; 
 }
 .other {
     background: #ffffff30;
@@ -222,8 +221,8 @@ body {
     border-radius: 18px 18px 18px 0;
 }
 .other-box .status-message {
-    align-self: flex-start; /* Căn trạng thái sang trái */
-    margin-left: 44px; /* Giữ khoảng trống cho avatar */
+    align-self: flex-start; 
+    margin-left: 44px; 
 }
 
 /* Typing indicator */
@@ -274,7 +273,6 @@ body {
     box-shadow: 0 0 12px rgba(255, 204, 0, 0.5);
 }
 
-/* ========== LOGOUT BUTTON (ĐÃ SỬA) ====== */
 /* ========== LOGOUT BUTTON (DƯỚI CÙNG BÊN PHẢI) ====== */
 #logoutBtn {
     height: 40px;
@@ -332,16 +330,15 @@ body {
 
 /* Tùy chỉnh CSS cho các nút gọi */
 #callButtons button {
-    /* Đảm bảo nút có kích thước rõ ràng */
-    font-size: 18px; /* Tăng kích thước icon */
-    padding: 8px 12px; /* Tăng padding để nút to hơn */
-    margin-left: 8px; /* Khoảng cách giữa các nút */
+    font-size: 18px; 
+    padding: 8px 12px; 
+    margin-left: 8px; 
     border: none;
-    border-radius: 50%; /* Làm cho nút tròn */
+    border-radius: 50%; 
     cursor: pointer;
     transition: background-color 0.2s, transform 0.1s;
-    width: 40px; /* Chiều rộng cố định */
-    height: 40px; /* Chiều cao cố định */
+    width: 40px; 
+    height: 40px; 
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -349,19 +346,19 @@ body {
 }
 
 #voiceCallBtn {
-    background-color: #4CAF50; /* Màu xanh lá cho gọi thoại */
+    background-color: #4CAF50; 
     color: white;
 }
 
 #videoCallBtn {
-    background-color: #2196F3; /* Màu xanh dương cho gọi video */
+    background-color: #2196F3; 
     color: white;
 }
 
 #voiceCallBtn:hover,
 #videoCallBtn:hover {
     opacity: 0.9;
-    transform: scale(1.05); /* Hiệu ứng khi di chuột */
+    transform: scale(1.05); 
 }
 
 /* Kiểu khi nút bị vô hiệu hóa (disabled) */
@@ -375,7 +372,74 @@ body {
 /* Đảm bảo tiêu đề chat vẫn canh lề đúng */
 #chatHeader {
     display: flex;
-    justify-content: space-between; /* Đẩy tên người dùng và nút gọi ra hai bên */
+    justify-content: space-between; 
     align-items: center;
     padding: 10px 15px;
+}
+
+/* ======================================= */
+/* === HIỆU ỨNG GỌI CHỜ (CARTOON STYLE) === */
+/* ======================================= */
+#callAnimationContainer {
+    display: flex; 
+    flex-direction: column; 
+    align-items: center;
+    justify-content: center;
+    margin: 30px 0; 
+}
+
+#callWaitingIcon {
+    font-size: 5em; 
+    color: #ffdd00; 
+    text-shadow: 0 0 10px rgba(255, 221, 0, 0.5);
+    animation: bouncePhone 1.5s infinite ease-in-out; 
+}
+
+/* Keyframe cho icon điện thoại lắc lư nhẹ */
+@keyframes bouncePhone {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-10px) rotate(5deg);
+    }
+    75% {
+        transform: translateY(0) rotate(-5deg);
+    }
+}
+
+/* Loading Dots Container */
+#loadingDots {
+    display: flex;
+    gap: 10px;
+}
+
+.dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ff7b4d; 
+    animation: cartoonDot 1.2s infinite ease-in-out;
+}
+
+/* Tạo độ trễ giữa các chấm */
+.dot:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.dot:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+/* Keyframe cho hiệu ứng chấm tròn nhảy nhót */
+@keyframes cartoonDot {
+    0%, 100% {
+        transform: translateY(0);
+        opacity: 0.5;
+    }
+    50% {
+        transform: translateY(-10px); 
+        opacity: 1;
+        background: #ffdd00; 
+    }
 }

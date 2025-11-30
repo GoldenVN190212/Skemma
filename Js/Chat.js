@@ -1,13 +1,13 @@
-// ✅ ĐÃ SỬA LỖI: Hợp nhất tất cả imports từ Firebase_config.js vào một dòng duy nhất
-// và giữ lại tất cả các imports còn lại từ các CDN của Firebase
-import { db, auth, storage, rtdb } from "./Firebase_config.js"; // Import db (Firestore), auth, storage, và rtdb (Realtime DB)
+// FILE: Chat.js
+
+import { db, auth, storage, rtdb } from "./Firebase_config.js"; 
 import { 
-    collection, // Import Firestore functions
-    doc,
-    getDoc
+    collection, 
+    doc,
+    getDoc
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { 
-  ref as dbRef, push, onChildAdded, onChildChanged, onChildRemoved, onValue, set, remove, update 
+    ref as dbRef, push, onChildAdded, onChildChanged, onChildRemoved, onValue, set, remove, update 
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
@@ -15,22 +15,21 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/fi
 
 // --- Socket.IO Client Setup ---
 const SERVER_URL = "http://192.168.100.42:8000";
-let socket = null; // Khai báo socket
+let socket = null; 
 
-// DOM (Đã cập nhật theo DOM trong code của bạn)
+// DOM
 const messagesDiv = document.getElementById("messages");
 const msgInput = document.getElementById("msg");
 const sendBtn = document.getElementById("sendBtn");
 const chatHeader = document.getElementById("chatHeader");
 
-// ✅ ĐÃ SỬA: Thêm biến DOM cho SPAN chứa tên bạn bè
 const friendNameDisplay = document.getElementById("friendNameDisplay"); 
 
 const emojiBtn = document.getElementById("emojiBtn");
 const attachBtn = document.getElementById("attachBtn");
 const fileInput = document.getElementById("fileInput");
 const themeToggle = document.getElementById("themeToggle");
-const sendStatusWrapper = document.getElementById("chatNotification"); // Dùng làm notification
+const sendStatusWrapper = document.getElementById("chatNotification"); 
 const chatInputArea = document.getElementById("chatInputArea");
 const typingIndicator = document.getElementById("typingIndicator");
 
@@ -39,7 +38,6 @@ let replyMessageObj = null;
 
 // Current chat
 let currentUserUid = null;
-// ⚠️ CẦN HOÀN THIỆN: Thêm biến để lưu trữ TÊN CỦA NGƯỜI DÙNG HIỆN TẠI
 let currentUserName = "User Name"; 
 let selectedFriendUid = null;
 let selectedFriendName = null;
@@ -48,7 +46,7 @@ let messagesRef = null;
 
 let isCurrentUserBlockedByFriend = false; 
 
-// --- CALL DOM & WebRTC Variables (MỚI) ---
+// --- CALL DOM & WebRTC Variables ---
 const callArea = document.getElementById("callArea");
 const callStatus = document.getElementById("callStatus");
 const localVideo = document.getElementById("localVideo");
@@ -59,506 +57,592 @@ const endCallBtn = document.getElementById("endCallBtn");
 const voiceCallBtn = document.getElementById("voiceCallBtn");
 const videoCallBtn = document.getElementById("videoCallBtn");
 
+// ✅ THÊM: Biến DOM cho Call Animation
+const callAnimationContainer = document.getElementById("callAnimationContainer"); 
+
 let peerConnection = null;
 let localStream = null;
 let currentCallType = null;
 let isCaller = false;
 let currentReceiver = null;
 let isCallInProgress = false;
-let incomingOfferSDP = null; // ✅ MỚI: Biến lưu trữ Offer SDP khi có cuộc gọi đến
+let incomingOfferSDP = null; 
+let callTimeout = null; 
+let ringtoneAudio = null; 
 
 // Cấu hình ICE Servers (dùng Google STUN mặc định)
 const peerConfiguration = {
-    iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-    ]
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+    ]
 };
 
 // --- Auth ---
 onAuthStateChanged(auth, async (user) => {
-  if (!user) return;
-  currentUserUid = user.uid;
-  
-  // ⚠️ CẦN HOÀN THIỆN: Lấy tên người dùng hiện tại từ Firestore
-  const userDoc = await getDoc(doc(db, "users", user.uid));
-  if (userDoc.exists()) {
-    currentUserName = userDoc.data().username || "User Name"; 
-  }
+    if (!user) return;
+    currentUserUid = user.uid;
+    
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    if (userDoc.exists()) {
+        currentUserName = userDoc.data().username || "User Name"; 
+    }
 
-  connectSocket();
+    connectSocket();
 });
 
 function connectSocket() {
-    if (socket && socket.connected) return;
-    
-    // Kết nối Socket.IO, truyền UID qua auth payload
-    socket = io(SERVER_URL, {
-        auth: {
-            uid: currentUserUid
-        }
-    });
+    if (socket && socket.connected) return;
+    
+    socket = io(SERVER_URL, {
+        auth: {
+            uid: currentUserUid
+        }
+    });
 
-    socket.on('connected', (data) => {
-        console.log(`[Socket.IO] Connected. Server message: ${data.message}`);
-        if (selectedFriendUid) {
-            requestHistory();
-        }
-    });
+    socket.on('connected', (data) => {
+        console.log(`[Socket.IO] Connected. Server message: ${data.message}`);
+        if (selectedFriendUid) {
+            requestHistory();
+        }
+    });
 
-    socket.on('receive_message', (msg) => {
-        console.log("[Socket.IO] New Message Received:", msg);
-        renderMessage(msg, msg.key); 
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    });
+    socket.on('receive_message', (msg) => {
+        console.log("[Socket.IO] New Message Received:", msg);
+        renderMessage(msg, msg.key); 
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
 
-    socket.on('message_history', (data) => {
-        console.log(`[Socket.IO] Received history for ${data.convId}: ${data.messages.length} messages.`);
-        messagesDiv.innerHTML = ""; 
-        data.messages.forEach(msg => {
-            renderMessage(msg, msg.key);
-        });
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    });
+    socket.on('message_history', (data) => {
+        console.log(`[Socket.IO] Received history for ${data.convId}: ${data.messages.length} messages.`);
+        messagesDiv.innerHTML = ""; 
+        data.messages.forEach(msg => {
+            renderMessage(msg, msg.key);
+        });
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
 
-    socket.on('typing', (data) => {
-        const isTyping = data.isTyping;
-        typingIndicator.textContent = isTyping ? `${selectedFriendName} đang trả lời...` : "";
-    });
+    socket.on('typing', (data) => {
+        const isTyping = data.isTyping;
+        typingIndicator.textContent = isTyping ? `${selectedFriendName} đang trả lời...` : "";
+    });
 
-    socket.on('disconnect', () => {
-        console.warn("[Socket.IO] Disconnected. Attempting to reconnect...");
-    });
+    socket.on('disconnect', () => {
+        console.warn("[Socket.IO] Disconnected. Attempting to reconnect...");
+    });
 
-    // --- CALL LISTENERS (MỚI) ---
+    // --- CALL LISTENERS ---
+    socket.on('incoming_call', async (data) => {
+        if (isCallInProgress) {
+            socket.emit('call_response', {
+                receiver: currentUserUid, 
+                sender: data.sender, 
+                accepted: false,
+                callType: data.callType,
+                reason: "Busy" 
+            });
+            return;
+        }
 
-    // 6. Xử lý cuộc gọi đến ('incoming_call')
-    socket.on('incoming_call', async (data) => {
-        if (isCallInProgress) {
-            socket.emit('call_response', {
-                receiver: currentUserUid, 
-                sender: data.sender, 
-                accepted: false,
-                callType: data.callType,
-                reason: "Busy" 
-            });
-            return;
-        }
+        currentCallType = data.callType;
+        currentReceiver = data.sender; 
 
-        currentCallType = data.callType;
-        currentReceiver = data.sender; 
+        if (!await getMedia(currentCallType)) {
+             socket.emit('call_response', {
+                receiver: currentUserUid, 
+                sender: data.sender, 
+                accepted: false,
+                callType: data.callType,
+                reason: "Receiver media access denied." 
+            });
+            return;
+        }
+        
+        isCallInProgress = true;
+        isCaller = false;
+        
+        callArea.style.display = 'flex'; // Hiển thị khung gọi
+        callStatus.textContent = `${data.senderName} đang gọi ${data.callType === 'video' ? 'Video' : 'Thoại'}...`;
+        answerCallBtn.style.display = 'block';
+        rejectCallBtn.style.display = 'block';
+        endCallBtn.style.display = 'none'; 
 
-        if (!await getMedia(currentCallType)) return;
-        
-        isCallInProgress = true;
-        isCaller = false;
-        
-        callStatus.textContent = `${data.senderName} đang gọi ${data.callType === 'video' ? 'Video' : 'Thoại'}...`;
-        answerCallBtn.style.display = 'block';
-        rejectCallBtn.style.display = 'block';
-        endCallBtn.style.display = 'none'; 
-    });
+        // ✅ HIỂN THỊ ANIMATION GỌI ĐẾN
+        if (callAnimationContainer) {
+            callAnimationContainer.style.display = 'flex'; 
+        }
+    });
 
-    // 7. Phản hồi cuộc gọi ('call_response')
-    socket.on('call_response', (data) => {
-        if (data.accepted) {
-            callStatus.textContent = `Cuộc gọi ${data.callType} đã được chấp nhận. Đang kết nối...`;
-            answerCallBtn.style.display = 'none';
-            rejectCallBtn.style.display = 'none';
-            endCallBtn.style.display = 'block'; 
-        } else {
-            resetCallState();
-            displayNotification(data.reason || "Người dùng đã từ chối cuộc gọi.", 'error');
-        }
-    });
-    
-    // 8. Lỗi gọi
-    socket.on('call_failed', (data) => {
-        resetCallState();
-        displayNotification(data.reason, 'error');
-    });
+    socket.on('call_response', (data) => {
+        // ✅ ẨN ANIMATION KHI CÓ PHẢN HỒI (CHẤP NHẬN HOẶC TỪ CHỐI)
+        if (callAnimationContainer) {
+            callAnimationContainer.style.display = 'none'; 
+        }
 
-    // 9. Xử lý ICE Candidate
-    socket.on('webrtc_ice_candidate', async (data) => {
-        if (data.candidate && peerConnection) {
-            try {
-                await peerConnection.addIceCandidate(data.candidate);
-            } catch (e) {
-                console.error('Error adding received ice candidate', e);
-            }
-        }
-    });
+        if (data.accepted) {
+            if (callTimeout) clearTimeout(callTimeout); 
+            callTimeout = null;
+            
+            callStatus.textContent = `Cuộc gọi ${data.callType} đã được chấp nhận. Đang kết nối...`;
+            answerCallBtn.style.display = 'none';
+            rejectCallBtn.style.display = 'none';
+            endCallBtn.style.display = 'block'; 
+        } else {
+            if (callTimeout) clearTimeout(callTimeout); 
+            callTimeout = null;
+            
+            callStatus.textContent = data.reason?.includes("Busy") 
+                ? `${selectedFriendName} đang bận.` 
+                : `${selectedFriendName} đã từ chối cuộc gọi.`;
+            
+            // ✅ SỬA: Gọi clearCallNotification để ẩn khung sau 5s
+            setTimeout(clearCallNotification, 5000); 
+        }
+    });
+    
+    socket.on('ringing', (data) => {
+        if (data.sender === currentUserUid && data.receiver === selectedFriendUid && isCaller) {
+            // ✅ HIỆU ỨNG ĐỔ CHUÔNG RÕ RÀNG
+            callStatus.textContent = `Đang đổ chuông tới ${selectedFriendName}... 📞`;
+        }
+    });
 
-    // 10. Xử lý SDP (Offer/Answer)
-    socket.on('webrtc_sdp', async (data) => {
-        
-        if (data.sdp.type === 'offer') {
-            // ✅ ĐÃ SỬA: Lưu trữ Offer SDP, đợi người dùng bấm Answer
-            incomingOfferSDP = data.sdp;
-            // Nếu người nhận (không phải người gọi)
-            if (!isCaller && !peerConnection) {
-                // Đã nhận được Offer, nhưng đợi người dùng chấp nhận (answerCall) để tạo PeerConnection
-                // Đã có logic xử lý trong incoming_call, không cần làm gì thêm ở đây.
-                console.log("Offer received and stored. Waiting for user to click Answer.");
-                return;
-            }
-        }
-        
-        if (peerConnection) {
-            if (isCaller && data.sdp.type === 'answer') {
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-            } else if (!isCaller && data.sdp.type === 'offer' && !incomingOfferSDP) {
-                // Trường hợp nếu Offer đến sau khi đã tạo PC (thường không xảy ra nếu logic chuẩn)
-                await handleOffer(data.sdp);
-            }
-        }
-    });
+    // ✅ SỬA: LISTENER NOT_REACHABLE (Bắt sự kiện từ Server khi đối phương offline sau 10s)
+    socket.on('not_reachable', (data) => {
+        if (data.sender === currentUserUid && data.receiver === selectedFriendUid && isCaller) {
+            if (callTimeout) clearTimeout(callTimeout); 
+            callTimeout = null;
+            
+            callStatus.textContent = `${selectedFriendName} không trực tuyến.`; 
+            
+            // ✅ ẨN ANIMATION VÀ THÔNG BÁO OFFLINE
+            if (callAnimationContainer) {
+                callAnimationContainer.style.display = 'none'; 
+            }
 
-    // 11. Kết thúc cuộc gọi
-    socket.on('call_ended', (data) => {
-        // Chỉ reset nếu cuộc gọi đến từ friend đang chọn
-        if(data.sender === selectedFriendUid || data.sender === currentReceiver) {
-            displayNotification(`${selectedFriendName} đã kết thúc cuộc gọi.`, 'info');
-            resetCallState();
-        }
-    });
+            // ✅ SỬA: Gọi clearCallNotification để ẩn khung sau 5s
+            setTimeout(clearCallNotification, 5000); 
+        }
+    });
+
+    socket.on('webrtc_ice_candidate', async (data) => {
+        if (data.candidate && peerConnection) {
+            try {
+                await peerConnection.addIceCandidate(data.candidate);
+            } catch (e) {
+                console.error('Error adding received ice candidate', e);
+            }
+        }
+    });
+
+    // ✅ SỬA: Logic SDP
+    socket.on('webrtc_sdp', async (data) => {
+        
+        if (data.sdp.type === 'offer') {
+            incomingOfferSDP = data.sdp;
+            if (!isCaller && !peerConnection) {
+                console.log("Offer received and stored. Waiting for user to click Answer.");
+                return; // QUAN TRỌNG: Dừng lại, đợi người dùng nhấn nút Trả lời
+            }
+        }
+        
+        if (peerConnection) {
+            // Người gọi nhận Answer
+            if (isCaller && data.sdp.type === 'answer') {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+            } 
+            // Người nhận xử lý Offer trong hàm answerCall, không cần logic khác ở đây.
+        }
+    });
+
+    socket.on('call_ended', (data) => {
+        if(data.sender === selectedFriendUid || data.sender === currentReceiver) {
+            callStatus.textContent = `${selectedFriendName} đã kết thúc cuộc gọi.`; 
+            // ✅ SỬA: Gọi clearCallNotification để ẩn khung sau 5s
+            setTimeout(clearCallNotification, 5000); 
+        }
+    });
 }
 
 function requestHistory() {
-    if (socket && selectedFriendUid && currentUserUid) {
-        socket.emit('request_history', { sender: currentUserUid, receiver: selectedFriendUid });
-    }
+    if (socket && selectedFriendUid && currentUserUid) {
+        socket.emit('request_history', { sender: currentUserUid, receiver: selectedFriendUid });
+    }
 }
 
 // --- format time ---
 function formatTime(ts) {
-  const d = new Date(ts);
-  return d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+    const d = new Date(ts);
+    return d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
 }
 
-// ---------- emoji picker ----------
-// (Giữ nguyên logic Emoji)
-
-// ---------- select friend (CẬP NHẬT LOGIC CHẶN) ----------
+// ---------- select friend ----------
 window.addEventListener("friendSelected", async (e) => {
-  selectedFriendUid = e.detail.uid;
-  selectedFriendName = e.detail.name;
-  
-  // ✅ ĐÃ SỬA: Chỉ cập nhật nội dung của SPAN chứa tên
-  if (friendNameDisplay) {
-    friendNameDisplay.innerText = `${selectedFriendName}`;
-  } else {
-    // Dòng dự phòng nếu HTML chưa sửa
-    chatHeader.innerText = `${selectedFriendName}`;
-}
+    selectedFriendUid = e.detail.uid;
+    selectedFriendName = e.detail.name;
+    
+    if (friendNameDisplay) {
+        friendNameDisplay.innerText = `${selectedFriendName}`;
+    } else {
+        chatHeader.innerText = `${selectedFriendName}`;
+    }
 
-  messagesDiv.innerHTML = "";
-    
-    await checkBlockStatusByRecipient(selectedFriendUid);
+    messagesDiv.innerHTML = "";
+    
+    await checkBlockStatusByRecipient(selectedFriendUid);
 
-    if (isCurrentUserBlockedByFriend) {
-        msgInput.disabled = true;
-        sendBtn.disabled = true;
-        voiceCallBtn.disabled = true; // Tắt nút gọi
-        videoCallBtn.disabled = true; // Tắt nút gọi
-        displayNotification("Người dùng này đã chặn bạn. Bạn không thể gửi tin nhắn.", 'warning');
-    } else {
-        msgInput.disabled = false;
-        sendBtn.disabled = false;
-        voiceCallBtn.disabled = false; // Bật nút gọi
-        videoCallBtn.disabled = false; // Bật nút gọi
-        if (sendStatusWrapper) sendStatusWrapper.innerHTML = ''; 
+    if (isCurrentUserBlockedByFriend) {
+        msgInput.disabled = true;
+        sendBtn.disabled = true;
+        voiceCallBtn.disabled = true; 
+        videoCallBtn.disabled = true; 
+        console.warn("Người dùng này đã chặn bạn. Bạn không thể gửi tin nhắn."); 
+    } else {
+        msgInput.disabled = false;
+        sendBtn.disabled = false;
+        voiceCallBtn.disabled = false; 
+        videoCallBtn.disabled = false; 
 
-        convId = [currentUserUid, selectedFriendUid].sort().join("_");
-        messagesRef = dbRef(rtdb, `conversations/${convId}/messages`);
+        convId = [currentUserUid, selectedFriendUid].sort().join("_");
+        messagesRef = dbRef(rtdb, `conversations/${convId}/messages`);
 
-        onChildChanged(messagesRef, (snapshot) => {
-            const msg = snapshot.val(); msg.key = snapshot.key;
-            renderMessageUpdate(msg, msg.key);
-        });
+        onChildChanged(messagesRef, (snapshot) => {
+            const msg = snapshot.val(); msg.key = snapshot.key;
+            renderMessageUpdate(msg, msg.key);
+        });
 
-        onChildRemoved(messagesRef, (snapshot) => {
-            const key = snapshot.key;
-            const box = document.querySelector(`[data-key='${key}']`);
-            if (box) {
-                const prevScroll = messagesDiv.scrollTop;
-                box.remove();
-                messagesDiv.scrollTop = prevScroll;
-            }
-        });
-        
-        requestHistory(); 
-        listenTyping(); 
-    }
+        onChildRemoved(messagesRef, (snapshot) => {
+            const key = snapshot.key;
+            const box = document.querySelector(`[data-key='${key}']`);
+            if (box) {
+                const prevScroll = messagesDiv.scrollTop;
+                box.remove();
+                messagesDiv.scrollTop = prevScroll;
+            }
+        });
+        
+        requestHistory(); 
+        listenTyping(); 
+    }
 });
 
-// --- Logic kiểm tra trạng thái chặn (Dùng Firestore) ---
+// --- Logic kiểm tra trạng thái chặn ---
 async function checkBlockStatusByRecipient(recipientUid) {
-    isCurrentUserBlockedByFriend = false; 
-    if (sendStatusWrapper) sendStatusWrapper.innerHTML = '';
+    isCurrentUserBlockedByFriend = false; 
 
-    if (!recipientUid) return;
+    if (!recipientUid) return;
 
-    try {
-        const recipientRef = doc(db, "users", recipientUid);
-        const recipientSnap = await getDoc(recipientRef);
-        const recipientData = recipientSnap.data();
+    try {
+        const recipientRef = doc(db, "users", recipientUid);
+        const recipientSnap = await getDoc(recipientRef);
+        const recipientData = recipientSnap.data();
 
-        if (recipientData && recipientData.blockedUsers?.includes(currentUserUid)) {
-            isCurrentUserBlockedByFriend = true;
-        }
+        if (recipientData && recipientData.blockedUsers?.includes(currentUserUid)) {
+            isCurrentUserBlockedByFriend = true;
+        }
 
-    } catch (error) {
-        console.warn("Lỗi khi kiểm tra trạng thái chặn từ Firestore:", error);
-        isCurrentUserBlockedByFriend = false;
-    }
+    } catch (error) {
+        console.warn("Lỗi khi kiểm tra trạng thái chặn từ Firestore:", error);
+        isCurrentUserBlockedByFriend = false;
+    }
 }
 
-
-// ---------- render message (Giữ nguyên) ----------
+// ---------- render message ----------
 function renderMessage(msg, key) {
-  if (document.querySelector(`[data-key='${key}']`)) return;
+    if (document.querySelector(`[data-key='${key}']`)) return;
 
-  const box = document.createElement("div");
-  box.className = "msg-box " + (msg.sender === currentUserUid ? "me-box" : "other-box");
-  box.dataset.key = key;
-  
-  const contentWrapper = document.createElement("div");
-  contentWrapper.className = "msg-content-wrapper";
+    const isMe = msg.sender === currentUserUid;
+    const box = document.createElement("div");
+    box.className = "msg-box " + (isMe ? "me-box" : "other-box");
+    box.dataset.key = key;
 
-  const avatar = document.createElement("div"); avatar.className = "avatar";
-  const bubble = document.createElement("div"); bubble.className = "msg " + (msg.sender === currentUserUid ? "me" : "other");
+    const contentWrapper = document.createElement("div");
+    contentWrapper.className = "msg-content-wrapper";
+    
+    const messageInteractionWrapper = document.createElement("div");
+    messageInteractionWrapper.style.display = 'flex';
+    messageInteractionWrapper.style.alignItems = 'flex-end';
+    messageInteractionWrapper.style.gap = '5px';
 
-  if (msg.reply) {
-    const replyDiv = document.createElement("div");
-    replyDiv.className = "replyPreviewMsg";
-    replyDiv.textContent = msg.reply.text || (msg.reply.type === "image" ? "[Image]" : "[Video]");
-    replyDiv.style.fontSize = "0.85em"; replyDiv.style.opacity = "0.8"; replyDiv.style.marginBottom = "4px";
-    bubble.appendChild(replyDiv);
-  }
+    const avatar = document.createElement("div"); avatar.className = "avatar";
+    const bubble = document.createElement("div"); bubble.className = "msg " + (isMe ? "me" : "other");
+    
+    // Nội dung tin nhắn
+    if (msg.reply) {
+        const replyDiv = document.createElement("div");
+        replyDiv.className = "replyPreviewMsg";
+        replyDiv.textContent = msg.reply.text || (msg.reply.type === "image" ? "[Image]" : "[Video]");
+        replyDiv.style.fontSize = "0.85em"; replyDiv.style.opacity = "0.8"; replyDiv.style.marginBottom = "4px";
+        bubble.appendChild(replyDiv);
+    }
 
-  if (msg.type === "image") {
-    const img = document.createElement("img"); img.src = msg.mediaURL; img.className = "msg-media";
-    img.onclick = () => window.open(msg.mediaURL, "_blank"); bubble.appendChild(img);
-  } else if (msg.type === "video") {
-    const vid = document.createElement("video"); vid.src = msg.mediaURL; vid.controls = true; vid.className = "msg-media"; bubble.appendChild(vid);
-  } else {
-    const txt = document.createElement("div"); txt.className = "text"; txt.textContent = msg.text || ""; bubble.appendChild(txt);
-  }
+    if (msg.type === "image") {
+        const img = document.createElement("img"); img.src = msg.mediaURL; img.className = "msg-media";
+        img.onclick = () => window.open(msg.mediaURL, "_blank"); bubble.appendChild(img);
+    } else if (msg.type === "video") {
+        const vid = document.createElement("video"); vid.src = msg.mediaURL; vid.controls = true; vid.className = "msg-media"; bubble.appendChild(vid);
+    } else {
+        const txt = document.createElement("div"); txt.className = "text"; txt.textContent = msg.text || ""; bubble.appendChild(txt);
+    }
 
-  const t = document.createElement("div"); t.className = "time"; t.textContent = formatTime(msg.timestamp || Date.now());
-  bubble.appendChild(t);
+    const t = document.createElement("div"); t.className = "time"; t.textContent = formatTime(msg.timestamp || Date.now());
+    bubble.appendChild(t);
 
-  if (msg.sender === currentUserUid) { 
-    contentWrapper.appendChild(bubble); 
-    contentWrapper.appendChild(avatar); 
-} 
-  else { 
-    contentWrapper.appendChild(avatar); 
-    contentWrapper.appendChild(bubble); 
+    // NÚT BA CHẤM MENU
+    const menuBtn = document.createElement("button");
+    menuBtn.textContent = "⋮"; 
+    menuBtn.className = "msg-menu-btn";
+    menuBtn.style.background = "none";
+    menuBtn.style.border = "none";
+    menuBtn.style.color = "inherit";
+    menuBtn.style.cursor = "pointer";
+    menuBtn.style.opacity = "0.5";
+    menuBtn.style.fontSize = "1.2em";
+
+    menuBtn.onclick = (e) => {
+        e.stopPropagation(); 
+        showMessageContextMenu(e, key, msg, isMe);
+    };
+    
+    // Xây dựng messageInteractionWrapper
+    if (isMe) {
+        messageInteractionWrapper.appendChild(menuBtn);
+        messageInteractionWrapper.appendChild(bubble);
+    } else {
+        messageInteractionWrapper.appendChild(bubble);
+        messageInteractionWrapper.appendChild(menuBtn);
+    }
+
+    // Xây dựng contentWrapper cuối cùng
+    if (isMe) { 
+        contentWrapper.appendChild(messageInteractionWrapper); 
+        contentWrapper.appendChild(avatar); 
+    } 
+    else { 
+        contentWrapper.appendChild(avatar); 
+        contentWrapper.appendChild(messageInteractionWrapper); 
+    }
+
+    box.appendChild(contentWrapper);
+
+    if (isMe) {
+        const statusDiv = document.createElement("div");
+        statusDiv.className = "status-message " + (msg.seen ? "seen" : "sent");
+        statusDiv.textContent = msg.seen ? "Đã xem" : "Đã gửi";
+        statusDiv.dataset.status = "status_" + key;
+        box.appendChild(statusDiv);
+    }
+
+    messagesDiv.appendChild(box);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
-  
-  box.appendChild(contentWrapper);
-
-  if (msg.sender === currentUserUid) {
-      const statusDiv = document.createElement("div");
-      statusDiv.className = "status-message " + (msg.seen ? "seen" : "sent");
-      statusDiv.textContent = msg.seen ? "Đã xem" : "Đã gửi";
-      statusDiv.dataset.status = "status_" + key;
-      box.appendChild(statusDiv);
-  }
-
-  messagesDiv.appendChild(box);
-  attachContextMenuToMessage(bubble, key, msg, msg.sender === currentUserUid);
-}
 
 
-// ---------- render update (Giữ nguyên) ----------
+// ---------- render update ----------
 function renderMessageUpdate(msg, key) {
-  const box = document.querySelector(`[data-key='${key}']`);
-  if (!box) return;
-  
-  const bubble = box.querySelector(".msg");
-  bubble.innerHTML = "";
+    const box = document.querySelector(`[data-key='${key}']`);
+    if (!box) return;
 
-  if (msg.reply) {
-    const replyDiv = document.createElement("div");
-    replyDiv.className = "replyPreviewMsg";
-    replyDiv.textContent = msg.reply.text || (msg.reply.type === "image" ? "[Image]" : "[Video]");
-    replyDiv.style.fontSize = "0.85em"; replyDiv.style.opacity = "0.8"; replyDiv.style.marginBottom = "4px";
-    bubble.appendChild(replyDiv);
-  }
+    const bubble = box.querySelector(".msg");
+    bubble.innerHTML = "";
 
-  if (msg.type === "image") {
-    const img = document.createElement("img"); img.src = msg.mediaURL; img.className = "msg-media"; img.onclick = () => window.open(msg.mediaURL, "_blank"); bubble.appendChild(img);
-  } else if (msg.type === "video") {
-    const vid = document.createElement("video"); vid.src = msg.mediaURL; vid.controls = true; vid.className = "msg-media"; bubble.appendChild(vid);
-  } else {
-    const txt = document.createElement("div"); txt.className = "text"; txt.textContent = msg.text || ""; bubble.appendChild(txt);
-  }
+    if (msg.reply) {
+        const replyDiv = document.createElement("div");
+        replyDiv.className = "replyPreviewMsg";
+        replyDiv.textContent = msg.reply.text || (msg.reply.type === "image" ? "[Image]" : "[Video]");
+        replyDiv.style.fontSize = "0.85em"; replyDiv.style.opacity = "0.8"; replyDiv.style.marginBottom = "4px";
+        bubble.appendChild(replyDiv);
+    }
 
-  const t = document.createElement("div"); t.className = "time"; t.textContent = formatTime(msg.timestamp || Date.now());
-  bubble.appendChild(t);
+    if (msg.type === "image") {
+        const img = document.createElement("img"); img.src = msg.mediaURL; img.className = "msg-media"; img.onclick = () => window.open(msg.mediaURL, "_blank"); bubble.appendChild(img);
+    } else if (msg.type === "video") {
+        const vid = document.createElement("video"); vid.src = msg.mediaURL; vid.controls = true; vid.className = "msg-media"; bubble.appendChild(vid);
+    } else {
+        const txt = document.createElement("div"); txt.className = "text"; txt.textContent = msg.text || ""; bubble.appendChild(txt);
+    }
 
-  if (msg.sender === currentUserUid) {
-      const statusDiv = box.querySelector(".status-message");
-      if(statusDiv) {
-          statusDiv.textContent = msg.seen ? "Đã xem" : "Đã gửi";
-          statusDiv.classList.remove("sent", "seen");
-          statusDiv.classList.add(msg.seen ? "seen" : "sent");
-      }
-  }
+    const t = document.createElement("div"); t.className = "time"; t.textContent = formatTime(msg.timestamp || Date.now());
+    bubble.appendChild(t);
+
+    if (msg.sender === currentUserUid) {
+        const statusDiv = box.querySelector(".status-message");
+        if(statusDiv) {
+            statusDiv.textContent = msg.seen ? "Đã xem" : "Đã gửi";
+            statusDiv.classList.remove("sent", "seen");
+            statusDiv.classList.add(msg.seen ? "seen" : "sent");
+        }
+    }
 }
 
-// ---------- context menu (Giữ nguyên) ----------
-function attachContextMenuToMessage(bubble, key, msg, isMe) {
-  bubble.oncontextmenu = (e) => {
-    e.preventDefault();
-    const existingMenu = document.getElementById("msgContextMenu");
-    if (existingMenu) existingMenu.remove();
+// =======================================================
+// LOGIC CONTEXT MENU
+// =======================================================
 
-    const menu = document.createElement("div");
-    menu.id = "msgContextMenu"; menu.style.position = "absolute"; menu.style.background = "#333"; menu.style.color = "#fff";
-    menu.style.padding = "8px"; menu.style.borderRadius = "6px"; menu.style.zIndex = 9999; menu.style.minWidth = "120px";
+function showMessageContextMenu(e, key, msg, isMe) {
+    const existingMenu = document.getElementById("msgContextMenu");
+    if (existingMenu) existingMenu.remove();
 
-    if (isMe) {
-      const editBtn = document.createElement("div"); editBtn.textContent = "Edit"; editBtn.style.cursor = "pointer";
-      editBtn.onclick = () => { editMessage(key, msg); menu.remove(); }; menu.appendChild(editBtn);
+    const menu = document.createElement("div");
+    menu.id = "msgContextMenu"; 
+    menu.style.position = "absolute"; 
+    menu.style.background = "#333"; 
+    menu.style.color = "#fff";
+    menu.style.padding = "8px 0";
+    menu.style.borderRadius = "6px"; 
+    menu.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.4)";
+    menu.style.zIndex = 9999; 
+    menu.style.minWidth = "120px";
+    menu.style.fontSize = "0.9em";
 
-      const deleteBtn = document.createElement("div"); deleteBtn.textContent = "Delete"; deleteBtn.style.cursor = "pointer";
-      deleteBtn.onclick = async () => { await deleteMessage(key); menu.remove(); }; menu.appendChild(deleteBtn);
-    }
+    const createMenuItem = (text, icon, onClickHandler) => {
+        const item = document.createElement("div");
+        item.innerHTML = `<i class="fa-solid fa-${icon}"></i> <span>${text}</span>`;
+        item.style.cssText = "padding: 4px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px;";
+        item.onmouseenter = () => (item.style.background = "#555");
+        item.onmouseleave = () => (item.style.background = "transparent");
+        item.onclick = () => { onClickHandler(); menu.remove(); };
+        return item;
+    };
 
-    const replyBtn = document.createElement("div"); replyBtn.textContent = "Reply"; replyBtn.style.cursor = "pointer";
-    replyBtn.onclick = () => { replyMessage(msg); menu.remove(); }; menu.appendChild(replyBtn);
 
-    document.body.appendChild(menu);
-    menu.style.left = `${e.pageX}px`; menu.style.top = `${e.pageY}px`;
-    document.addEventListener("click", () => menu.remove(), { once: true });
-  };
+    if (isMe) {
+        menu.appendChild(createMenuItem("Edit", "pencil", () => editMessage(key, msg)));
+        menu.appendChild(createMenuItem("Delete", "trash-can", async () => await deleteMessage(key)));
+    }
+
+    menu.appendChild(createMenuItem("Reply", "reply", () => replyMessage(msg)));
+
+    document.body.appendChild(menu);
+    
+    const rect = e.target.getBoundingClientRect();
+    menu.style.left = isMe ? `${rect.left - menu.offsetWidth - 5}px` : `${rect.right + 5}px`; 
+    menu.style.top = `${rect.top - 10}px`;
+    
+    document.addEventListener("click", () => menu.remove(), { once: true });
 }
 
-// ---------- edit/delete/reply (Giữ nguyên) ----------
+
+// ---------- edit/delete/reply ----------
 async function editMessage(key, msg) {
-  // Logic edit (cần hoàn thiện)
+    // Logic edit (cần hoàn thiện)
 }
 async function deleteMessage(key) {
-  // Logic delete (cần hoàn thiện)
-  await remove(dbRef(rtdb, `conversations/${convId}/messages/${key}`));
+    await remove(dbRef(rtdb, `conversations/${convId}/messages/${key}`));
 }
 function replyMessage(msg) {
-  replyMessageObj = msg;
-  let replyPreview = document.getElementById("replyPreview");
-  if (replyPreview) replyPreview.style.display = "flex";
-  document.getElementById("replyText").textContent = msg.text || (msg.type === "image" ? "[Image]" : "[Video]");
-  msgInput.focus();
+    replyMessageObj = msg;
+    let replyPreview = document.getElementById("replyPreview");
+    if (replyPreview) replyPreview.style.display = "flex";
+    document.getElementById("replyText").textContent = msg.text || (msg.type === "image" ? "[Image]" : "[Video]");
+    msgInput.focus();
 }
 document.getElementById("cancelReplyBtn")?.addEventListener("click", () => {
-    replyMessageObj = null;
-    document.getElementById("replyPreview").style.display = "none";
+    replyMessageObj = null;
+    document.getElementById("replyPreview").style.display = "none";
 });
 
 
-// ---------- send message (Dùng Socket.IO) ----------
+// ---------- send message ----------
 sendBtn.addEventListener("click", async () => { await sendTextMessage(); });
 msgInput.addEventListener("keydown", async (e) => { if (e.key === "Enter") { e.preventDefault(); await sendTextMessage(); } });
 async function sendTextMessage() {
-  const text = msgInput.value.trim();
-  if (!selectedFriendUid || !text || !socket || !socket.connected) return;
+    const text = msgInput.value.trim();
+    if (!selectedFriendUid || !text || !socket || !socket.connected) return;
 
-    if (isCurrentUserBlockedByFriend) {
-        displayNotification("Người dùng này đã chặn bạn. Không thể gửi tin nhắn.", 'error');
-        msgInput.value = "";
-        return;
-    }
+    if (isCurrentUserBlockedByFriend) {
+        console.warn("Người dùng này đã chặn bạn. Không thể gửi tin nhắn.");
+        msgInput.value = "";
+        return;
+    }
 
-  const payload = {
-    sender: currentUserUid,
-    receiver: selectedFriendUid, 
-    text: text || "",
-    timestamp: Date.now(),
-    seen: false,
-    type: "text",
-    reply: replyMessageObj ? {
-      key: replyMessageObj.key || null,
-      text: replyMessageObj.text || "",
-      type: replyMessageObj.type || "text"
-    } : null
-  };
-    
-  socket.emit('send_message', payload);
+    const payload = {
+        sender: currentUserUid,
+        receiver: selectedFriendUid, 
+        text: text || "",
+        timestamp: Date.now(),
+        seen: false,
+        type: "text",
+        reply: replyMessageObj ? {
+            key: replyMessageObj.key || null,
+            text: replyMessageObj.text || "",
+            type: replyMessageObj.type || "text"
+        } : null
+    };
+    
+    socket.emit('send_message', payload);
 
-  msgInput.value = "";
-  replyMessageObj = null;
-  const replyPreview = document.getElementById("replyPreview");
-  if (replyPreview) replyPreview.style.display = "none";
-  
-  sendTypingStatus(false);
+    msgInput.value = "";
+    replyMessageObj = null;
+    const replyPreview = document.getElementById("replyPreview");
+    if (replyPreview) replyPreview.style.display = "none";
+    
+    sendTypingStatus(false);
 }
 
-// ---------- typing indicator (Dùng Socket.IO) ----------
+// ---------- typing indicator ----------
 let typingTimeout = null;
 msgInput.addEventListener("input", () => {
-  if (!convId || !currentUserUid) return;
-    
-    if (isCurrentUserBlockedByFriend) return; 
+    if (!convId || !currentUserUid) return;
+    
+    if (isCurrentUserBlockedByFriend) return; 
 
-    sendTypingStatus(true);
-    
-  if (typingTimeout) clearTimeout(typingTimeout);
-  typingTimeout = setTimeout(() => { sendTypingStatus(false); }, 1500);
+    sendTypingStatus(true);
+    
+    if (typingTimeout) clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => { sendTypingStatus(false); }, 1500);
 });
 
 function sendTypingStatus(isTyping) {
-    if (socket && selectedFriendUid && currentUserUid) {
-        socket.emit('typing', {
-            sender: currentUserUid,
-            receiver: selectedFriendUid,
-            isTyping: isTyping
-        });
-    }
+    if (socket && selectedFriendUid && currentUserUid) {
+        socket.emit('typing', {
+            sender: currentUserUid,
+            receiver: selectedFriendUid,
+            isTyping: isTyping
+        });
+    }
 }
 
 function listenTyping() {
-  // Đã chuyển logic nhận trạng thái gõ phím sang socket.on('typing')
-  console.log("[Chat.js] Typing listener moved to Socket.IO.");
+    console.log("[Chat.js] Typing listener moved to Socket.IO.");
 }
 
 
-// --- Hàm hiển thị thông báo (notification) ---
-function displayNotification(message, type) {
-    if (!sendStatusWrapper) return;
-    
-    sendStatusWrapper.innerHTML = `<div class="p-2 text-center text-sm font-medium rounded-lg">${message}</div>`;
-    const notificationDiv = sendStatusWrapper.querySelector('div');
+// --- Hàm hiển thị thông báo (ĐÃ VÔ HIỆU HÓA ALERT) ---
+function displayNotification(message, type) { 
+    console.log(`[Notification ${type.toUpperCase()}]: ${message}`);
+    // ĐÃ XÓA ALERT
+}
 
-    if (type === 'warning') {
-        notificationDiv.classList.add('bg-yellow-100', 'text-yellow-800', 'border', 'border-yellow-300');
-    } else if (type === 'error') {
-        notificationDiv.classList.add('bg-red-500', 'text-white');
-    } else if (type === 'info') {
-        notificationDiv.classList.add('bg-blue-500', 'text-white');
-    } else {
-        notificationDiv.classList.add('bg-gray-700', 'text-white');
-    }
-    
-    if (type !== 'warning' && type !== 'error') {
-        setTimeout(() => sendStatusWrapper.innerHTML = "", 5000);
-    }
+// ✅ HÀM MỚI: Dọn dẹp UI sau khi hiển thị thông báo lỗi/kết thúc (Khắc phục lỗi timeout)
+function clearCallNotification() {
+    callStatus.textContent = ""; 
+    callArea.style.display = 'none'; 
+    
+    if (callAnimationContainer) {
+        callAnimationContainer.style.display = 'none'; // Tắt animation
+    }
+    
+    // Đảm bảo nút gọi được bật lại
+    if (!isCurrentUserBlockedByFriend) {
+        voiceCallBtn.disabled = false;
+        videoCallBtn.disabled = false;
+    }
+    console.log("[Call] Call UI cleared successfully.");
 }
 
 
-// ---------- theme toggle (Giữ nguyên) ----------
+// ---------- theme toggle ----------
 const root = document.documentElement;
 themeToggle?.addEventListener("click", () => {
-  const isDark = root.dataset.theme === "dark"; 
-  root.dataset.theme = isDark ? "light" : "dark";
-  localStorage.setItem("chat_theme", root.dataset.theme);
+    const isDark = root.dataset.theme === "dark"; 
+    root.dataset.theme = isDark ? "light" : "dark";
+    localStorage.setItem("chat_theme", root.dataset.theme);
 });
 (function initTheme() { root.dataset.theme = localStorage.getItem("chat_theme") || "dark"; })();
 
 
-// --- CALL LOGIC (MỚI) ---
+// --- CALL LOGIC ---
 
 voiceCallBtn.addEventListener('click', () => startCall('voice'));
 videoCallBtn.addEventListener('click', () => startCall('video'));
@@ -566,208 +650,284 @@ endCallBtn.addEventListener('click', () => endCall());
 answerCallBtn.addEventListener('click', () => answerCall(true));
 rejectCallBtn.addEventListener('click', () => answerCall(false));
 
+// HÀM GET MEDIA (Đã sửa để hiển thị Video/UI ngay sau khi lấy luồng thành công)
 async function getMedia(callType) {
-    currentCallType = callType;
-    try {
-        const constraints = {
-            video: callType === 'video', 
-            audio: true 
-        };
-        localStream = await navigator.mediaDevices.getUserMedia(constraints);
-        localVideo.srcObject = localStream;
-        // Hiển thị local video
-        localVideo.style.display = callType === 'video' ? 'block' : 'none'; 
-        // Ẩn remote video cho đến khi có track
-        remoteVideo.style.display = 'none'; 
-        callArea.style.display = 'flex';
-        return true;
-    } catch (error) {
-        console.error("Lỗi truy cập media:", error);
-        displayNotification("Lỗi: Không thể truy cập camera/micro.", 'error');
-        resetCallState();
-        return false;
-    }
+    currentCallType = callType;
+    try {
+        const constraints = {
+            video: callType === 'video' ? true : false, 
+            audio: true 
+        };
+        
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        localVideo.srcObject = localStream;
+        
+        // ✅ Cập nhật: Chỉ hiển thị localVideo nếu là video call
+        localVideo.style.display = callType === 'video' ? 'block' : 'none'; 
+        
+        remoteVideo.style.display = 'none'; 
+        
+        callStatus.textContent = `Đang tải luồng ${callType} của bạn...`;
+        return true;
+        
+    } catch (error) {
+        console.error("Lỗi truy cập media:", error);
+        
+        let errorMessage = "LỖI: Không thể truy cập camera/micro.";
+        
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            errorMessage = "QUYỀN TRUY CẬP BỊ TỪ CHỐI: Vui lòng cho phép trình duyệt truy cập camera và microphone.";
+        } else if (window.location.protocol === 'http:' && !window.location.hostname.match(/localhost|127\.0\.0\.1/)) {
+            errorMessage = "LỖI KẾT NỐI: WebRTC (camera/mic) **yêu cầu kết nối HTTPS**.";
+        } else if (error.name === 'NotFoundError') {
+            errorMessage = "KHÔNG TÌM THẤY THIẾT BỊ: Vui lòng kiểm tra camera hoặc microphone có sẵn.";
+        }
+        
+        callStatus.textContent = "Lỗi thiết bị: " + errorMessage; 
+        
+        // ✅ Dùng clearCallNotification để ẩn khung sau 5s
+        setTimeout(clearCallNotification, 5000); 
+        return false;
+    }
 }
 
 function createPeerConnection() {
-    peerConnection = new RTCPeerConnection(peerConfiguration);
+    peerConnection = new RTCPeerConnection(peerConfiguration);
 
-    // Track đã được thêm trong startCall và answerCall(true)
+    peerConnection.ontrack = (event) => {
+        if (remoteVideo.srcObject !== event.streams[0]) {
+            remoteVideo.srcObject = event.streams[0];
+            
+            // ✅ HIỂN THỊ VIDEO LỚN KHI CÓ TRACK
+            remoteVideo.style.display = 'block'; 
+            
+            // Đảm bảo video cục bộ (nhỏ) cũng được hiển thị nếu là video call
+            if (currentCallType === 'video') {
+                localVideo.style.display = 'block'; 
+            }
+        }
+    };
 
-    peerConnection.ontrack = (event) => {
-        if (remoteVideo.srcObject !== event.streams[0]) {
-            remoteVideo.srcObject = event.streams[0];
-            // ✅ ĐÃ SỬA: Luôn hiển thị remote video khi có track
-            remoteVideo.style.display = 'block'; 
-        }
-    };
-
-    peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-            socket.emit('webrtc_ice_candidate', {
-                sender: currentUserUid,
-                receiver: currentReceiver || selectedFriendUid, // Dùng currentReceiver khi đang gọi
-                candidate: event.candidate
-            });
-        }
-    };
-    
-    peerConnection.oniceconnectionstatechange = () => {
-        console.log(`ICE Connection State: ${peerConnection.iceConnectionState}`);
-        if (peerConnection.iceConnectionState === 'failed' || peerConnection.iceConnectionState === 'disconnected') {
-             if(isCallInProgress) {
-                // Tự động kết thúc nếu kết nối thất bại
-                endCall(true); // Gửi cờ 'isLocal' để không gửi lại tín hiệu endCall
-                displayNotification("Kết nối bị mất hoặc thất bại. Cuộc gọi kết thúc.", 'error');
-             }
-        }
-        if (peerConnection.iceConnectionState === 'connected') {
-             callStatus.textContent = `Đang trò chuyện (${currentCallType === 'video' ? 'Video' : 'Thoại'})`;
-        }
-    }
+    peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+            socket.emit('webrtc_ice_candidate', {
+                sender: currentUserUid,
+                receiver: currentReceiver || selectedFriendUid, 
+                candidate: event.candidate
+            });
+        }
+    };
+    
+    peerConnection.oniceconnectionstatechange = () => {
+        console.log(`ICE Connection State: ${peerConnection.iceConnectionState}`);
+        if (peerConnection.iceConnectionState === 'failed' || peerConnection.iceConnectionState === 'disconnected') {
+             if(isCallInProgress) {
+                 endCall(true); 
+                 callStatus.textContent = "Kết nối bị mất. Cuộc gọi kết thúc."; 
+                 // ✅ Dùng clearCallNotification để ẩn khung sau 5s
+                 setTimeout(clearCallNotification, 5000); 
+              }
+        }
+        if (peerConnection.iceConnectionState === 'connected') {
+            callStatus.textContent = `Đang trò chuyện (${currentCallType === 'video' ? 'Video' : 'Thoại'})`;
+            
+            // Ẩn animation khi kết nối thành công
+            if (callAnimationContainer) {
+                callAnimationContainer.style.display = 'none'; 
+            }
+        }
+    }
 }
 
+// HÀM START CALL (Đã sửa để tích hợp hiệu ứng và timeout)
 async function startCall(callType) {
-    if (isCallInProgress) return;
-    if (!selectedFriendUid) return; // Không gọi khi chưa chọn bạn
+    if (isCallInProgress) return;
+    if (!selectedFriendUid) return; 
 
-    if (!await getMedia(callType)) return;
+    // BƯỚC 1: HIỂN THỊ UI KHUNG GỌI NGAY LẬP TỨC
+    callArea.style.display = 'flex';
+    callStatus.textContent = `Đang chuẩn bị cuộc gọi ${callType} đến ${selectedFriendName}...`;
+    endCallBtn.style.display = 'block'; 
 
-    isCaller = true;
-    isCallInProgress = true;
-    currentCallType = callType;
-    currentReceiver = selectedFriendUid;
-    
-    createPeerConnection();
-    // Thêm tracks vào PeerConnection
-    localStream.getTracks().forEach(track => {
-        peerConnection.addTrack(track, localStream);
-    });
+    // ✅ HIỂN THỊ ANIMATION GỌI CHỜ
+    if (callAnimationContainer) {
+        callAnimationContainer.style.display = 'flex'; 
+    }
+    
+    // BƯỚC 2: LẤY MEDIA VÀ THOÁT NẾU LỖI 
+    if (!await getMedia(callType)) {
+        // Tắt animation nếu lỗi media
+        if (callAnimationContainer) {
+            callAnimationContainer.style.display = 'none'; 
+        }
+        return;
+    }
 
-    // 1. Tạo Offer SDP
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
+    isCaller = true;
+    isCallInProgress = true;
+    currentCallType = callType;
+    currentReceiver = selectedFriendUid;
+    
+    createPeerConnection();
+    localStream.getTracks().forEach(track => {
+        peerConnection.addTrack(track, localStream);
+    });
 
-    // 2. Gửi Yêu cầu gọi qua Socket.IO
-    socket.emit('call_request', { 
-        sender: currentUserUid, 
-        receiver: selectedFriendUid, 
-        callType: callType,
-        // ✅ ĐÃ SỬA: Gửi tên người dùng hiện tại
-        senderName: currentUserName 
-    });
-    
-    // Gửi Offer SDP 
-    socket.emit('webrtc_sdp', {
-        sender: currentUserUid,
-        receiver: selectedFriendUid,
-        sdp: peerConnection.localDescription
-    });
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
 
-    callStatus.textContent = `Đang gọi ${selectedFriendName} (${callType === 'video' ? 'Video' : 'Thoại'})...`;
-    endCallBtn.style.display = 'block';
-    answerCallBtn.style.display = 'none';
-    rejectCallBtn.style.display = 'none';
-    voiceCallBtn.disabled = true; 
-    videoCallBtn.disabled = true;
+    socket.emit('call_request', { 
+        sender: currentUserUid, 
+        receiver: selectedFriendUid, 
+        callType: callType,
+        senderName: currentUserName 
+    });
+    
+    socket.emit('webrtc_sdp', {
+        sender: currentUserUid,
+        receiver: selectedFriendUid,
+        sdp: peerConnection.localDescription
+    });
+
+    // BƯỚC 3: CẬP NHẬT TRẠNG THÁI CHỜ PHẢN HỒI
+    callStatus.textContent = `Đang chờ phản hồi từ ${selectedFriendName}...`;
+    answerCallBtn.style.display = 'none';
+    rejectCallBtn.style.display = 'none';
+    voiceCallBtn.disabled = true; 
+    videoCallBtn.disabled = true;
+
+    // THIẾT LẬP TIMEOUT KHÔNG TRẢ LỜI (20 giây)
+    if (callTimeout) clearTimeout(callTimeout);
+    callTimeout = setTimeout(() => {
+        if (isCallInProgress) {
+            endCall(true); 
+            callStatus.textContent = `${selectedFriendName} không bắt máy.`; 
+            
+            // ✅ ẨN ANIMATION KHI TIMEOUT
+            if (callAnimationContainer) {
+                callAnimationContainer.style.display = 'none'; 
+            }
+
+            // ✅ SỬA: Gọi clearCallNotification để ẩn khung sau 5s
+            setTimeout(clearCallNotification, 5000); 
+        }
+    }, 20000); 
 }
 
 async function handleOffer(sdp) {
-    // Thiết lập remote description từ Offer của người gọi
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
 
-    // Tạo Answer SDP
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
+    const answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
 
-    // Gửi Answer SDP qua Socket.IO
-    socket.emit('webrtc_sdp', {
-        sender: currentUserUid,
-        receiver: currentReceiver, // Gửi lại cho người đã gọi mình
-        sdp: peerConnection.localDescription
-    });
-    
-    incomingOfferSDP = null; // Xóa Offer đã xử lý
+    socket.emit('webrtc_sdp', {
+        sender: currentUserUid,
+        receiver: currentReceiver, 
+        sdp: peerConnection.localDescription
+    });
+    
+    incomingOfferSDP = null; 
 }
 
 function endCall(isLocal = false) {
-    if (!isCallInProgress) return;
+    if (!isCallInProgress) return;
 
-    // Gửi tín hiệu kết thúc cuộc gọi đến người kia
-    if (socket && currentReceiver && !isLocal) { // Chỉ gửi nếu không phải kết thúc cục bộ do lỗi
-         socket.emit('call_end', { 
-            sender: currentUserUid, 
-            receiver: currentReceiver 
-        });
-    }
+    if (socket && currentReceiver && !isLocal) { 
+        socket.emit('call_end', { 
+            sender: currentUserUid, 
+            receiver: currentReceiver 
+        });
+    }
 
-    resetCallState();
+    resetCallState();
 }
 
+// ✅ SỬA: Hàm answerCall (Bây giờ xử lý incomingOfferSDP đã lưu)
 async function answerCall(accept) {
-    // Gửi phản hồi đến người gọi qua Socket.IO
-    socket.emit('call_response', {
-        receiver: currentUserUid,
-        sender: currentReceiver,
-        accepted: accept,
-        callType: currentCallType
-    });
-    
-    if (accept) {
-        // ✅ ĐÃ SỬA: Nếu là người nhận và chấp nhận, tạo PeerConnection và xử lý Offer
-        if (!peerConnection) { 
-            createPeerConnection(); 
-            
-            // Thêm tracks vào PeerConnection
-            localStream.getTracks().forEach(track => {
-                peerConnection.addTrack(track, localStream);
-            });
+    socket.emit('call_response', {
+        receiver: currentUserUid,
+        sender: currentReceiver,
+        accepted: accept,
+        callType: currentCallType
+    });
+    
+    if (accept) {
+        // Ẩn animation ngay khi chấp nhận
+        if (callAnimationContainer) {
+            callAnimationContainer.style.display = 'none'; 
+        }
 
-            // Xử lý Offer SDP đã lưu trữ
-            if (incomingOfferSDP) {
-                await handleOffer(incomingOfferSDP);
-            }
-        }
+        if (!peerConnection) { 
+            createPeerConnection(); 
+            
+            localStream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
+            });
 
-        callStatus.textContent = "Cuộc gọi đã được chấp nhận. Đang chờ kết nối...";
-        answerCallBtn.style.display = 'none';
-        rejectCallBtn.style.display = 'none';
-        endCallBtn.style.display = 'block'; 
-    } else {
-        resetCallState();
-    }
+            if (incomingOfferSDP) {
+                await handleOffer(incomingOfferSDP);
+            }
+        }
+
+        callStatus.textContent = "Cuộc gọi đã được chấp nhận. Đang chờ kết nối...";
+        answerCallBtn.style.display = 'none';
+        rejectCallBtn.style.display = 'none';
+        endCallBtn.style.display = 'block'; 
+    } else {
+        resetCallState();
+    }
 }
 
+// ✅ SỬA: HÀM RESET CALL STATE (Chỉ dọn dẹp kết nối, để clearCallNotification ẩn UI nếu có thông báo lỗi)
 function resetCallState() {
-    if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-    }
-    if (peerConnection) {
-        peerConnection.close();
-    }
-    
-    peerConnection = null;
-    localStream = null;
-    isCallInProgress = false;
-    isCaller = false;
-    currentCallType = null;
-    currentReceiver = null;
-    incomingOfferSDP = null; // Xóa SDP đã lưu trữ
+    
+    if (callTimeout) clearTimeout(callTimeout); 
+    callTimeout = null;
+    
+    // DỌN DẸP STREAM VÀ PEER CONNECTION
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+    }
+    if (peerConnection) {
+        peerConnection.close();
+    }
+    
+    // RESET BIẾN TRẠNG THÁI
+    peerConnection = null;
+    localStream = null;
+    isCallInProgress = false;
+    isCaller = false;
+    currentCallType = null;
+    currentReceiver = null;
+    incomingOfferSDP = null; 
 
-    localVideo.srcObject = null;
-    remoteVideo.srcObject = null;
-    localVideo.style.display = 'none';
-    remoteVideo.style.display = 'none'; // Ẩn remote video
+    // ẨN VIDEO
+    localVideo.srcObject = null;
+    remoteVideo.srcObject = null;
+    localVideo.style.display = 'none';
+    remoteVideo.style.display = 'none'; 
 
-    callArea.style.display = 'none';
-    endCallBtn.style.display = 'none';
-    answerCallBtn.style.display = 'none';
-    rejectCallBtn.style.display = 'none';
-    callStatus.textContent = "";
+    // ẨN NÚT
+    endCallBtn.style.display = 'none';
+    answerCallBtn.style.display = 'none';
+    rejectCallBtn.style.display = 'none';
+    
+    // CHỈ ẨN callArea/xóa callStatus nếu cuộc gọi thành công và kết thúc
+    if (callStatus.textContent.includes('Đang trò chuyện') || callStatus.textContent === "") {
+        callArea.style.display = 'none';
+        callStatus.textContent = "";
+    }
+    
+    // Ẩn animation
+    if (callAnimationContainer) {
+        callAnimationContainer.style.display = 'none'; 
+    }
 
-	// Đảm bảo nút gọi được bật lại (trừ khi người dùng bị chặn)
-	if (!isCurrentUserBlockedByFriend) {
-		voiceCallBtn.disabled = false;
-		videoCallBtn.disabled = false;
-	}
+    // BẬT LẠI NÚT GỌI
+    if (!isCurrentUserBlockedByFriend) {
+        voiceCallBtn.disabled = false;
+        videoCallBtn.disabled = false;
+    }
+    console.log("[Call] Call state reset.");
 }
