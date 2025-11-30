@@ -1,69 +1,3 @@
-<!DOCTYPE html>
-<html lang="vi">
-
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Skemma Chat</title>
-  <link rel="stylesheet" href="./Css/Chat.css">
-</head>
-
-<body>
-  <!-- NAVBAR -->
-  <nav class="navbar">
-    <div class="logo">Skemi</div>
-    <ul class="nav-links"></ul>
-  </nav>
-
-  <div class="chat-wrapper">
-
-    <!-- FRIENDS LIST -->
-    <div class="friends-sidebar" id="friendsSidebar">
-      <h3>👥 Friends</h3>
-      <ul id="friendsList"></ul>
-
-      <div class="friend-search">
-        <input id="friendSearchInput" placeholder="Search by username or email..." />
-        <button id="addFriendBtn">Add Friend</button>
-        <ul id="searchResults"></ul>
-      </div>
-    </div>
-
-    <!-- CHAT AREA -->
-    <div class="chat-container">
-      <div class="chat-header" id="chatHeader">Select a friend to chat</div>
-
-      <div id="messages"></div>
-
-      <!-- Typing indicator -->
-      <div id="typingIndicator" class="typing-indicator"></div>
-
-      <!-- INPUT AREA -->
-      <div class="input-area" id="chatInputArea">
-        <div id="replyPreview" style="display:none;">
-          <span id="replyText"></span>
-          <button id="cancelReplyBtn">✖</button>
-        </div>
-        <button id="emojiBtn">😊</button>
-        <button id="attachBtn">📎</button>
-        <input id="fileInput" type="file" accept="image/*,video/*" style="display:none">
-
-        <input id="msg" placeholder="Type a message..." autocomplete="off" />
-        <button id="sendBtn">Send</button>
-
-        <!-- Send status -->
-        <div id="sendStatusWrapper"></div>
-
-      </div>
-
-      <button id="logoutBtn">🚪 Logout</button>
-
-      <script type="module" src="./Js/User_navbar.js" defer></script>
-      <script type="module" src="./Js/Friends.js" defer></script>
-      <script type="module" src="./Js/Chat.js" defer></script>
-
-</body>
-
 </html><!DOCTYPE html>
 <html lang="vi">
 
@@ -149,10 +83,7 @@
                         thúc</button>
                 </div>
             </div>
-
-            <button id="logoutBtn">🚪 Logout</button>
         </div>
-
     </div>
 
     <script type="module" src="./Js/User_navbar.js" defer></script>
