@@ -1,25 +1,20 @@
 // TÊN FILE: server.js
 
 const express = require('express');
-const https = require('https'); // ⬅️ THAY THẾ 'http' BẰNG 'https'
-const fs = require('fs');       // ⬅️ Thêm module File System để đọc chứng chỉ
+const https = require('https'); 
+const fs = require('fs');       
 const { Server } = require('socket.io');
 
-// ====================================================================
-//                 CẤU HÌNH HTTPS (CHỨNG CHỈ TỰ KÝ)
-// ====================================================================
+const PORT = 8000;
 
-// ✅ THAY THẾ BẰNG MẬT KHẨU THỰC TẾ BẠN ĐÃ DÙNG CHO key.pem!
-const MY_PASS_PHRASE = 'Mật khẩu bạn vừa tạo'; 
-
+// ✅ CẤU HÌNH MỚI: Dùng khóa đã giải mã và BỎ DÒNG 'passphrase'
 const options = {
-    key: fs.readFileSync('key.pem'),
-    cert: fs.readFileSync('cert.pem'),
-    passphrase: MY_PASS_PHRASE 
+    key: fs.readFileSync('key_unencrypted.pem'), 
+    cert: fs.readFileSync('cert.pem')
 };
 
 const app = express();
-const server = https.createServer(options, app); // ⬅️ Dùng HTTPS Server
+const server = https.createServer(options, app); 
 
 const io = new Server(server, {
     cors: {
@@ -28,10 +23,9 @@ const io = new Server(server, {
     }
 });
 
-// ... (Giữ nguyên các biến và hàm Utils) ...
+// ... (Giữ nguyên các biến Utils) ...
 const userSockets = {};
 const messageHistory = {}; 
-const PORT = 8000;
 function getConvId(uid1, uid2) {
     return [uid1, uid2].sort().join("_");
 }
@@ -39,8 +33,9 @@ function getConvId(uid1, uid2) {
 // --- Socket.IO Events ---
 
 io.on('connection', (socket) => {
-    const userId = socket.handshake.auth.uid;
     // ... (Giữ nguyên toàn bộ logic kết nối, tin nhắn, WebRTC signaling,...) ...
+    
+    const userId = socket.handshake.auth.uid;
     
     if (!userId) {
         console.error("[ERROR] Connection refused: Missing UID in auth payload");
@@ -220,6 +215,5 @@ io.on('connection', (socket) => {
 
 // Khởi chạy server Node.js
 server.listen(PORT, () => {
-    // ⬅️ Cập nhật console log
     console.log(`Node.js Socket.IO Server running on HTTPS: https://localhost:${PORT}`); 
 });

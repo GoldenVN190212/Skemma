@@ -14,7 +14,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/fi
 
 
 // --- Socket.IO Client Setup ---
-const SERVER_URL = "http://192.168.100.42:8000";
+const SERVER_URL = "https://192.168.100.42:8000";
 let socket = null; 
 
 // DOM
@@ -255,13 +255,56 @@ function connectSocket() {
         }
     });
 
-    socket.on('call_ended', (data) => {
-        if(data.sender === selectedFriendUid || data.sender === currentReceiver) {
-            callStatus.textContent = `${selectedFriendName} đã kết thúc cuộc gọi.`; 
-            // ✅ SỬA: Gọi clearCallNotification để ẩn khung sau 5s
-            setTimeout(clearCallNotification, 5000); 
-        }
+// TRONG FILE Chat.js (hoặc nơi bạn xử lý sự kiện Socket.IO)
+
+// Nghe sự kiện khi người dùng khác ngắt cuộc gọi (từ Server)
+socket.on('call_ended', (data) => {
+    // 1. Dọn dẹp WebRTC và giao diện
+    cleanupCall(); 
+    
+    // 2. Hiển thị thông báo
+    const callerId = data.sender;
+    displayNotification(`Cuộc gọi đã kết thúc bởi ${callerId}.`);
+    
+    // 3. Đảm bảo ẩn giao diện gọi sau khi hiện thông báo
+    hideCallScreen(); 
+    
+    console.log(`[CALL ENDED] Received signal from Server. Call ended by ${callerId}.`);
+});
+
+// Xử lý khi bạn tự mình ngắt cuộc gọi
+function endCall(remoteUserId) {
+    // 1. Gửi tín hiệu ngắt cuộc gọi tới Server
+    socket.emit('call_end', { 
+        sender: myUserId, 
+        receiver: remoteUserId 
     });
+    
+    // 2. Dọn dẹp WebRTC và giao diện (ở phía mình)
+    cleanupCall(); 
+    
+    // 3. Hiện thông báo cho chính mình (nếu cần)
+    displayNotification("Bạn đã kết thúc cuộc gọi.");
+    
+    // 4. Ẩn giao diện gọi
+    hideCallScreen(); 
+}
+
+// Hàm dọn dẹp WebRTC (ví dụ)
+function cleanupCall() {
+    if (myPeerConnection) {
+        myPeerConnection.close();
+        myPeerConnection = null;
+    }
+    // Tắt stream camera/mic nếu có
+    if (myStream) {
+        myStream.getTracks().forEach(track => track.stop());
+        myStream = null;
+    }
+    // Reset các biến trạng thái cuộc gọi
+    isCalling = false; 
+    isRinging = false;
+}
 }
 
 function requestHistory() {
